@@ -28,7 +28,7 @@ def infer_with_cupy(onnx_path, inputs, batch_size):
     input_names = [x.name for x in sess.get_inputs()]
     output_name = sess.get_outputs()[0].name
     total_n = next(iter(inputs.values())).shape[0]
-    batch_size = min(batch_size, total_n)
+    batch_size = max(1, min(batch_size, total_n))
 
     if total_n <= batch_size:
         batch = {n: inputs[n] for n in input_names}
@@ -49,7 +49,7 @@ def main():
     p.add_argument("--onnx", required=True)
     p.add_argument("--input", required=True)
     p.add_argument("--output", required=True)
-    p.add_argument("--batch-size", type=int, default=10000)
+    p.add_argument("--batch-size", type=int, default=10000, help="Inference batch size")
     args = p.parse_args()
 
     inputs = load_input(args.input)

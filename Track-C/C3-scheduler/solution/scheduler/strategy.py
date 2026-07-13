@@ -57,10 +57,14 @@ class DecompositionStrategy:
             return PrecisionProfile("fp32")
         if node.op_type in {"Conv"}:
             return PrecisionProfile("fp16")
-        if node.op_type in {"MatMul", "Gemm"}:
+        if node.op_type == "Gemm":
+            return PrecisionProfile("fp32")
+        if node.op_type == "MatMul":
             return PrecisionProfile("fp16")
         if node.op_type in {"Relu", "Add", "Mul", "Div"}:
             return PrecisionProfile("fp8")
+        if node.op_type in {"GlobalAveragePool"}:
+            return PrecisionProfile("fp4")
         if node.op_type in {"Flatten", "Reshape", "Transpose", "Split", "Gather", "Constant"}:
             return PrecisionProfile("fp32")
         return PrecisionProfile("fp32")
@@ -140,6 +144,19 @@ class DecompositionStrategy:
     def _intermediate(self) -> str:
         self._intermediate_id += 1
         return f"__c3_inter_{self._intermediate_id}__"
+
+    def _get_shape(self, tensor_name: str, graph: GraphIR) -> list[int] | None:
+        """Best-effort shape lookup from node attributes or graph inputs."""
+        for node in graph.nodes:
+            if tensor_name in node.outputs and "shape" in node.attributes:
+                try:
+                    return [int(d) for d in node.attributes["shape"]]
+                except (ValueError, TypeError):
+                    pass
+        for inp in graph.inputs:
+            if tensor_name == inp:
+                return None  # dynamic input batch
+        return None
 
 
 def _problem_elements(problem_size: int | tuple[int, ...] | None) -> int:
