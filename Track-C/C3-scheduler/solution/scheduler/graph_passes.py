@@ -44,6 +44,11 @@ def fuse_graph(graph: GraphIR) -> tuple[GraphIR, List[FusionRecord]]:
             new_nodes.append(fused)
             fusion_log.append(FusionRecord("FusedMatMulBias", [node.name, next_node.name], fused.name))
             skip.add(next_node.name)
+        elif node.op_type == "Conv" and next_node and next_node.op_type == "BatchNormalization":
+            fused = _make_fused("FusedConv2dBatchNorm", [node, next_node])
+            new_nodes.append(fused)
+            fusion_log.append(FusionRecord("FusedConv2dBatchNorm", [node.name, next_node.name], fused.name))
+            skip.add(next_node.name)
         elif node.op_type == "Softmax" and next_node and next_node.op_type == "Dropout":
             fused = _make_fused("FusedSoftmaxDropout", [node, next_node])
             new_nodes.append(fused)
