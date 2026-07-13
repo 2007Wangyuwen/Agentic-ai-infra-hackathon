@@ -13,20 +13,27 @@ def load_input(input_dir):
 def infer_with_cupy(onnx_path, inputs, batch_size):
     import onnxruntime as ort
 
+    sess_options = ort.SessionOptions()
+    sess_options.intra_op_num_threads = os.cpu_count() or 4
+    sess_options.inter_op_num_threads = os.cpu_count() or 4
+    sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
     available = ort.get_available_providers()
     if "CUDAExecutionProvider" in available:
-        try:
-            import cupy as cp
-            providers = [("CUDAExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
-        except ImportError:
-            providers = ["CPUExecutionProvider"]
+        providers = [("CUDAExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
     else:
         providers = ["CPUExecutionProvider"]
 
-    sess = ort.InferenceSession(onnx_path, providers=providers)
+    sess = ort.InferenceSession(onnx_path, sess_options, providers=providers)
     input_names = [x.name for x in sess.get_inputs()]
     output_name = sess.get_outputs()[0].name
     total_n = next(iter(inputs.values())).shape[0]
+
+    # 如果总量不大，一次跑完更快
+    if total_n <= batch_size:
+        batch = {n: inputs[n] for n in input_names}
+        out = sess.run([output_name], batch)[0]
+        return out.astype(np.float32), output_name
 
     results = []
     for start in range(0, total_n, batch_size):
