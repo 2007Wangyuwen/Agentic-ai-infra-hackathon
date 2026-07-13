@@ -20,6 +20,6 @@ pip install -r requirements.txt
 
 ## 验证结果
 
-- MLP: accuracy=98.35% ✅
-- ResNet-18: accuracy=93.51% ✅
-- Transformer: allclose=True ✅
+- MLP: accuracy=98.35%
+- ResNet-18: accuracy=93.51%
+- Transformer: allclose=True
