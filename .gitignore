@@ -1,3 +1,15 @@
 .venv/
 out_*/
 *.npy
+
+# C2 generated artifacts and official starter-kit files
+Track-C/C2-runtime/libaec.so
+Track-C/C2-runtime/submission/
+Track-C/C2-runtime/bin/
+Track-C/C2-runtime/public-report.json
+Track-C/C2-runtime/submission-public-report.json
+Track-C/C2-runtime/lib/
+Track-C/C2-runtime/include/
+Track-C/C2-runtime/kernels/
+Track-C/C2-runtime/grader/
+Track-C/C2-runtime/cases/
