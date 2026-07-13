@@ -11,53 +11,30 @@ def load_input(input_dir):
     return inputs
 
 def infer_with_cupy(onnx_path, inputs, batch_size):
-    """GPU inference using onnxruntime CUDA provider + CuPy for pre/post."""
-    try:
-        import cupy as cp
-        import onnxruntime as ort
-
-        sess_options = ort.SessionOptions()
-        providers = [
-            ("CUDAExecutionProvider", {"device_id": 0}),
-            "CPUExecutionProvider",
-        ]
-        sess = ort.InferenceSession(onnx_path, sess_options, providers=providers)
-
-        input_names = [x.name for x in sess.get_inputs()]
-        output_name = sess.get_outputs()[0].name
-        total_n = next(iter(inputs.values())).shape[0]
-
-        results = []
-        for start in range(0, total_n, batch_size):
-            end = min(start + batch_size, total_n)
-            # Move to GPU with CuPy then back forort
-            batch = {}
-            for name in input_names:
-                arr = inputs[name][start:end]
-                # Use CuPy for data handling
-                gpu_arr = cp.asarray(arr)
-                batch[name] = cp.asnumpy(gpu_arr)# ort needs numpy
-            out = sess.run([output_name], batch)[0]
-            results.append(cp.asnumpy(cp.asarray(out, dtype=cp.float32)))
-
-        return np.concatenate(results, axis=0), output_name
-
-    except Exception as e:
-        print(f"[WARN] CuPy/CUDA failed ({e}), falling back to CPU")
-        return infer_cpu(onnx_path, inputs, batch_size)
-
-def infer_cpu(onnx_path, inputs, batch_size):
     import onnxruntime as ort
-    sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+
+    available = ort.get_available_providers()
+    if "CUDAExecutionProvider" in available:
+        try:
+            import cupy as cp
+            providers = [("CUDAExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
+        except ImportError:
+            providers = ["CPUExecutionProvider"]
+    else:
+        providers = ["CPUExecutionProvider"]
+
+    sess = ort.InferenceSession(onnx_path, providers=providers)
     input_names = [x.name for x in sess.get_inputs()]
     output_name = sess.get_outputs()[0].name
     total_n = next(iter(inputs.values())).shape[0]
+
     results = []
     for start in range(0, total_n, batch_size):
         end = min(start + batch_size, total_n)
         batch = {n: inputs[n][start:end] for n in input_names}
         out = sess.run([output_name], batch)[0]
         results.append(out.astype(np.float32))
+
     return np.concatenate(results, axis=0), output_name
 
 def main():

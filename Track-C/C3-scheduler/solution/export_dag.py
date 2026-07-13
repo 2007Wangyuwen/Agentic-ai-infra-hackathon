@@ -18,16 +18,42 @@ def parse_onnx(model_path):
 
     initializer_names = set(init.name for init in graph.initializer)
 
-    graph_inputs = [
-        {"name": x.name, "dtype": dtype_to_str(x.type.tensor_type.elem_type)}
-        for x in graph.input
-        if x.name not in initializer_names
-    ]
+    graph_inputs = []
+    for x in graph.input:
+        if x.name not in initializer_names:
+            t = x.type.tensor_type
+            shape = []
+            if t.HasField("shape"):
+                for d in t.shape.dim:
+                    if d.dim_param:
+                        shape.append(d.dim_param)
+                    elif d.dim_value:
+                        shape.append(int(d.dim_value))
+                    else:
+                        shape.append("unknown")
+            graph_inputs.append({
+                "name": x.name,
+                "dtype": dtype_to_str(t.elem_type),
+                "shape": shape,
+            })
 
-    graph_outputs = [
-        {"name": x.name, "dtype": dtype_to_str(x.type.tensor_type.elem_type)}
-        for x in graph.output
-    ]
+    graph_outputs = []
+    for x in graph.output:
+        t = x.type.tensor_type
+        shape = []
+        if t.HasField("shape"):
+            for d in t.shape.dim:
+                if d.dim_param:
+                    shape.append(d.dim_param)
+                elif d.dim_value:
+                    shape.append(int(d.dim_value))
+                else:
+                    shape.append("unknown")
+        graph_outputs.append({
+            "name": x.name,
+            "dtype": dtype_to_str(t.elem_type),
+            "shape": shape,
+        })
 
     nodes = []
     producer = {}
