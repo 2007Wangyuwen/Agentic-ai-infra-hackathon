@@ -13,3 +13,17 @@ Track-C/C2-runtime/include/
 Track-C/C2-runtime/kernels/
 Track-C/C2-runtime/grader/
 Track-C/C2-runtime/cases/
+
+__pycache__/
+*.py[cod]
+*.bak
+*.tmp
+*.log
+.vscode/
+.cursor/
+tmp_test/
+track-c-submit.tar.gz
+Track-C/C1-compiler/build/
+Track-C/C1-compiler/variants/
+Track-C/C1-compiler/variants_build/
+Track-C/C3-scheduler/solution/*_dag.json
