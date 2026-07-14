@@ -11,19 +11,23 @@ python export_dag.py --onnx ../testcases/release_to_competitors/models/resnet_v1
 python export_dag.py --onnx ../testcases/release_to_competitors/models/transformer_v1.onnx --output transformer_dag.json
 
 echo ""
-echo "=== C3.5: MLP 推理 ==="
+echo "=== C3.2/C3.3/C3.4: Scheduler 模块测试 ==="
+python test_scheduler.py
+
+echo ""
+echo "=== C3.5: MLP 推理 (standalone) ==="
 python infer.py --onnx ../testcases/release_to_competitors/models/mlp_v1.onnx \
   --input ../testcases/release_to_competitors/testdata/c35/mlp_v1/input \
   --output ./out_mlp --batch-size 256
 
 echo ""
-echo "=== C3.5: ResNet 推理 ==="
+echo "=== C3.5: ResNet 推理 (standalone) ==="
 python infer.py --onnx ../testcases/release_to_competitors/models/resnet_v1.onnx \
   --input ../testcases/release_to_competitors/testdata/c35/resnet_v1/input \
   --output ./out_resnet --batch-size 128
 
 echo ""
-echo "=== C3.5: Transformer 推理 ==="
+echo "=== C3.5: Transformer 推理 (standalone) ==="
 python infer.py --onnx ../testcases/release_to_competitors/models/transformer_v1.onnx \
   --input ../testcases/release_to_competitors/testdata/c35/transformer_v1/input \
   --output ./out_transformer --batch-size 64
@@ -42,4 +46,9 @@ python check_output.py --pred ./out_transformer \
   --golden ../testcases/release_to_competitors/testdata/c35/transformer_v1/golden
 
 echo ""
+echo "=== C3.5: Worker 协议自测 ==="
+echo "提示: 用资料包中的 selfcheck_worker.py 验证 worker 协议:"
+echo "  python selfcheck_worker.py --worker 'python infer_worker.py' --models mlp_v1 resnet_v1"
+echo ""
+
 echo "=== 全部完成 ==="
