@@ -100,6 +100,18 @@ BigFormer fp32 权重约 18 GB，超过 H200 虚拟化后的 16 GB 显存。Work
 BigFormer 占 C3.5 性能分的 **80%**。
 
 
+## CModel 验证（2026-07-14）
+
+5 个公开测试用例在 `aec-precise-linux-x86_64` 上全部通过：
+
+| Case | AEC 指令 | Steps | 状态 |
+|------|:---:|---:|:---:|
+| T1 `basic_lowering` | 24 | 786,432 | done |
+| T2 `scalar_optimization` | 26 | 425,984 | done |
+| T3 `memory_reuse` | 30 | 491,520 | done |
+| T4 `register_scheduling` | 38 | 622,592 | done |
+| T5 `scalar_gemm` | 52 | 612,864 | done |
+
 ## 测试环境
 
 | 项目 | 本地 | 评测服务器 |

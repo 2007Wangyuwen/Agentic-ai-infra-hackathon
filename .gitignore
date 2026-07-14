@@ -27,3 +27,6 @@ Track-C/C1-compiler/build/
 Track-C/C1-compiler/variants/
 Track-C/C1-compiler/variants_build/
 Track-C/C3-scheduler/solution/*_dag.json
+Track-C/C1-compiler/testcases/
+aec-precise-linux-x86_64
+RELEASE_MANIFEST.json

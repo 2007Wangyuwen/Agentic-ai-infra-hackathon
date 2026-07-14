@@ -4,7 +4,7 @@
 
 - 官方赛题材料：ONNX 模型、测试数据、spec 文档仅作为评测契约使用
 - C3.1 图解析：`export_dag.py` 为本提交自行实现
-- C3.5 推理：`infer.py` 为本提交自行实现
+- C3.5 推理：`infer_worker.py` 与 `infer.py` 为本提交自行实现
 - C3.2/C3.3/C3.4 算子调度：`scheduler/` 模块为团队协作实现
 
 ## 第三方依赖

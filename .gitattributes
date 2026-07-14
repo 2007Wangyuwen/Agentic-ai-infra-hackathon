@@ -1,0 +1,10 @@
+﻿*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.gitignore text eol=lf
+aec-cc text eol=lf
+aec-objdump text eol=lf
+run_agent text eol=lf

@@ -90,7 +90,8 @@ class DecompositionStrategy:
                 KernelSpecRef("div_fp32", [b, c], node.outputs),
             ]
         if node.op_type == "LayerNormalization":
-            mean, centered, sq, var = (
+            mean, centered, sq, var, rstd = (
+                self._intermediate(),
                 self._intermediate(),
                 self._intermediate(),
                 self._intermediate(),
@@ -101,8 +102,8 @@ class DecompositionStrategy:
                 KernelSpecRef("sub_fp32", [node.inputs[0], mean], [centered]),
                 KernelSpecRef("mul_fp32", [centered, centered], [sq]),
                 KernelSpecRef("reduce_mean_fp32", [sq], [var]),
-                KernelSpecRef("sqrt_fp32", [var], [self._intermediate()]),
-                KernelSpecRef("layernorm_affine_fp32", node.inputs + [mean, var], node.outputs),
+                KernelSpecRef("sqrt_fp32", [var], [rstd]),
+                KernelSpecRef("layernorm_affine_fp32", node.inputs + [rstd], node.outputs),
             ]
         if node.op_type in {"Relu", "Add", "Mul", "Div", "Erf"}:
             return [KernelSpecRef(f"elementwise_{node.op_type.lower()}_{p}", node.inputs, node.outputs)]
