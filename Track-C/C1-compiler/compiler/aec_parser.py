@@ -183,7 +183,7 @@ def _parse_instruction(line: str, reg_types: Dict[str, str]) -> Optional[IRInst]
         inst.src2 = operands[2] if len(operands) > 2 else None
     elif op_base == "shl":
         inst.opcode = AECOpcode.SHL
-        inst.aec_type = AECType.B32
+        inst.aec_type = AECType.U32
         inst.dst, inst.src1 = operands[0], operands[1]
         inst.src2 = operands[2] if len(operands) > 2 else None
     elif op_base == "mov":

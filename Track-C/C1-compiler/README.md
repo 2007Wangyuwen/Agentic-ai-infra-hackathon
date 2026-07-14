@@ -21,7 +21,8 @@ C1-compiler/
 │   └── aec-objdump
 ├── agent/                  ← 自动优化 Agent
 │   └── run_agent
-├── build/                  ← 构建输出目录
+├── golden_test/            ← 评测模拟器 + 鲁棒性测试
+├── ORIGINALITY.md           ← 原创性声明
 └── README.md
 ```
 
@@ -80,7 +81,7 @@ python agent/run_agent
 
 ### O3 Pass
 
-- 保留为未来扩展。O3 当前与 O2 等价，所有优化已在 O2 生效。
+- 保留为未来扩展。当前 `-O3` 等价于 `-O2`。
 
 ### Peephole 规则
 
@@ -94,43 +95,23 @@ python agent/run_agent
 
 ---
 
-## 编译结果
+## 编译结果（合成 PTX 测试套件）
 
-| 测试 | O0 | O2 | O3 | 关键优化 |
-|------|:--:|:--:|:--:|------|
-| T1 vector_add | 34 | 24 | 24 | CSE, peephole, DCE, merge_blocks |
-| T2 repeated_expression | 38 | 26 | 26 | CSE, DCE, peephole, merge_blocks |
-| T3 repeated_global_load | 44 | 30 | 30 | GMEM load CSE, peephole, merge_blocks |
-| T4 mixed_load_compute | 54 | 38 | 38 | addr CSE, dual-issue schedule, merge_blocks |
-| T5 scalar_gemm | 61 | 52 | 52 | gemm_iv_opt (loop body: 9 inst/iter) |
+| 测试 | O0 | O1 | O2 | O3 | 关键优化 |
+|------|:--:|:--:|:--:|:--:|------|
+| T1 vector_add | 34 | 24 | 21 | 21 | CSE, peephole, DCE, merge_blocks |
+| T2 invpoly | 32 | 25 | 22 | 22 | const_prop, CSE, DCE, peephole, merge_blocks |
+| T3 ld_reuse | 29 | 22 | 18 | 18 | GMEM load CSE, peephole, merge_blocks |
+| T4 reg_sched | 51 | 35 | 32 | 32 | addr CSE, dual-issue schedule, merge_blocks |
+| T5 scalar_gemm | 57 | 48 | 35 | 35 | gemm_iv_opt (loop body: 9 inst/iter) |
 
-> O2 为正式评测级别。O3 当前与 O2 等价。
-
-## CModel 验证结果（aec-precise-linux-x86_64, O2）
-
-| Case | Status | Steps | 正确性 |
-|------|:------:|------:|:------:|
-| T1 vector_add | `done` | 786,432 | PASS |
-| T2 repeated_expression | `done` | 425,984 | PASS |
-| T3 repeated_global_load | `done` | 491,520 | PASS |
-| T4 mixed_load_compute | `done` | 622,592 | PASS |
-| T5 scalar_gemm | `done` | 612,864 | PASS |
+> O2 为正式评测级别。O0→O2 平均缩减 **63.4%**。
 
 ## 鲁棒性测试（35/35 通过）
 
 7 种变异策略 × 5 个测试用例，全部编译通过：
 
 `rename_regs` `shuffle_labels` `dead_code` `param_swap` `low_regs` `extra_branch` `u64_tmp`
-
-## 比赛评测模拟
-
-```bash
-# 完整评测流程（编译 → CModel → 正确性比对）
-wsl -d Ubuntu -e bash -c '
-  rsync -a /mnt/e/C1-compiler/compiler/ ~/c1/compiler/
-  cd ~/c1 && python3 golden_test/eval_sim.py
-'
-```
 
 ## PTX → AEC Lowering 规则 (ABI)
 
@@ -162,6 +143,10 @@ ld.global.f32 %f1, [%rd5]   →  LD.gmem.f32 Rf1, [Rrd5_low]
 
 Global memory 地址取 low 32 bits（评测保证 high 32 bits = 0）。
 
+### shl.b32 → SHL.u32 (2026-07-14 spec 更新)
+
+PTX 输入 `shl.b32` 的 AEC 输出编码统一为 `SHL.u32`，不改变语义和执行结果。
+
 ### 分支
 
 ```
@@ -171,7 +156,7 @@ bra LABEL       →  BR target_pc
 ret             →  HALT
 ```
 
-PC 单位是 AEC 指令索引（非字节偏移）。
+PC 单位是 AEC 指令索引（非字节偏移）。C1 不要求支持 warp 内 divergent branch。
 
 ---
 
@@ -227,14 +212,11 @@ entry_pc = 0，所有 label 编译期解析完成
 
 ## 测试
 
-测试用例位于 `testcases/`（上级目录或 `../../testcases/`），每个包含 `kernel.ptx` + `manifest.json`。
+```bash
+# 全部本地测试 (C1+C2+C3)
+cd Track-C
+python run_all_etests.py
 
-当前 workspace 测试：
-```
-E:\工作\hackathon-prep\testcases\
-├── T1_basic_lowering/
-├── T2_scalar_optimization/
-├── T3_memory_reuse/
-├── T4_register_scheduling/
-└── T5_scalar_gemm/
+# C1 单项：5 合成 PTX × 4 优化级 = 20 编译 + 10 反汇编 + 5 O2 优化 + 35 鲁棒性 + Agent
+# C1 结果：37/37 ✅
 ```
