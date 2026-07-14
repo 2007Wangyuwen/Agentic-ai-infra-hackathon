@@ -102,9 +102,35 @@ python agent/run_agent
 | T2 repeated_expression | 38 | 26 | 26 | CSE, DCE, peephole, merge_blocks |
 | T3 repeated_global_load | 44 | 30 | 30 | GMEM load CSE, peephole, merge_blocks |
 | T4 mixed_load_compute | 54 | 38 | 38 | addr CSE, dual-issue schedule, merge_blocks |
-| T5 scalar_gemm | 61 | 52 | 52 | gemm_iv_opt (loop body: 9 inst/iter)
+| T5 scalar_gemm | 61 | 52 | 52 | gemm_iv_opt (loop body: 9 inst/iter) |
 
----
+> O2 为正式评测级别。O3 当前与 O2 等价。
+
+## CModel 验证结果（aec-precise-linux-x86_64, O2）
+
+| Case | Status | Steps | 正确性 |
+|------|:------:|------:|:------:|
+| T1 vector_add | `done` | 786,432 | PASS |
+| T2 repeated_expression | `done` | 425,984 | PASS |
+| T3 repeated_global_load | `done` | 491,520 | PASS |
+| T4 mixed_load_compute | `done` | 622,592 | PASS |
+| T5 scalar_gemm | `done` | 612,864 | PASS |
+
+## 鲁棒性测试（35/35 通过）
+
+7 种变异策略 × 5 个测试用例，全部编译通过：
+
+`rename_regs` `shuffle_labels` `dead_code` `param_swap` `low_regs` `extra_branch` `u64_tmp`
+
+## 比赛评测模拟
+
+```bash
+# 完整评测流程（编译 → CModel → 正确性比对）
+wsl -d Ubuntu -e bash -c '
+  rsync -a /mnt/e/C1-compiler/compiler/ ~/c1/compiler/
+  cd ~/c1 && python3 golden_test/eval_sim.py
+'
+```
 
 ## PTX → AEC Lowering 规则 (ABI)
 
