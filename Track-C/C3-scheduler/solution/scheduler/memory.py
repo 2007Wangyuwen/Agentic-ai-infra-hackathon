@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numbers
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -23,6 +24,12 @@ class DeviceMemoryPool:
         self.capacity = 0
 
     def malloc(self, size: int) -> MemoryBlock:
+        # NumPy-safe guard — must precede _align to avoid negative→-256 conversion.
+        if isinstance(size, bool) or not isinstance(size, numbers.Integral):
+            raise TypeError("allocation size must be an integer")
+        size = int(size)
+        if size <= 0:
+            raise ValueError("allocation size must be positive")
         size = _align(size)
         candidates = [block for block in self.blocks if block.free and block.size >= size]
         if candidates:
@@ -39,7 +46,13 @@ class DeviceMemoryPool:
         return block
 
     def free(self, block: MemoryBlock) -> None:
-        block.free = True
+        # Identity check — dataclass __eq__ is value-based; use `is`.
+        owned = next((c for c in self.blocks if c is block), None)
+        if owned is None:
+            raise ValueError("DeviceMemoryPool.free(): block does not belong to this pool")
+        if owned.free:
+            raise ValueError("DeviceMemoryPool.free(): double free detected")
+        owned.free = True
         self._coalesce()
 
     def _coalesce(self) -> None:
@@ -100,18 +113,60 @@ def assign_reuse_slots(lifetimes: Dict[str, TensorLifetime]) -> Dict[str, int]:
 
 
 def build_execution_plan(graph: GraphIR) -> List[PlanStep]:
-    """Create a schedule with weight preload and independent compute streams."""
+    """Create a schedule with weight preload and dependency-aware compute streams.
 
+    Stream assignment uses union-find on the undirected data-dependency graph:
+    nodes connected by any producer-consumer edge share one component;
+    independent components get alternating compute streams.
+    """
     lifetimes = analyze_lifetimes(graph)
     assign_reuse_slots(lifetimes)
+
+    # ── Union-find: connected by data dependency → same component ──
+    parent = {n.name: n.name for n in graph.nodes}
+
+    def _root(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def _union(a, b):
+        ra, rb = _root(a), _root(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    # Build producer map
+    producer: dict = {}
+    for n in graph.nodes:
+        for t in n.outputs:
+            if t:
+                producer[t] = n.name
+    # Union producer-consumer pairs
+    for n in graph.nodes:
+        for t in n.inputs:
+            src = producer.get(t)
+            if src is not None and src != n.name:
+                _union(src, n.name)
+
+    # Assign alternating stream per connected component
+    component_stream: dict = {}
+    stream_idx = 0
+    for n in graph.nodes:
+        root = _root(n.name)
+        if root not in component_stream:
+            component_stream[root] = f"compute_{stream_idx % 2}"
+            stream_idx += 1
+
+    # ── Build execution plan ──
     steps: List[PlanStep] = []
     produced = set(graph.inputs)
-    for index, node in enumerate(graph.nodes):
+    for node in graph.nodes:
         weight_inputs = [name for name in node.inputs if name not in produced and name]
         for weight in weight_inputs:
             steps.append(PlanStep("h2d_weight", weight, "copy_prefetch"))
             produced.add(weight)
-        stream = f"compute_{index % 2}"
+        stream = component_stream[_root(node.name)]
         steps.append(PlanStep("kernel", node.name, stream, list(node.inputs), list(node.outputs)))
         produced.update(node.outputs)
     return steps

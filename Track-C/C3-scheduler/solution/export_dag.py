@@ -74,7 +74,7 @@ def parse_onnx(model_path):
         dst = node.name if node.name else f"{node.op_type}_{idx}"
         for inp in node.input:
             if inp in producer:
-                edges.append({"src": producer[inp], "dst": dst, "tensor": inp})
+                edges.append({"src_node": producer[inp], "dst_node": dst, "tensor": inp})
 
     return {
         "format_version": "1.0",

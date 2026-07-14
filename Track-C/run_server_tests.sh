@@ -84,20 +84,27 @@ test_c2() {
     echo "  C2: Host Runtime"
     echo "============================================"
 
-    KIT="$SCRIPT_DIR/C2-runtime/starter-kit"
-    if [ ! -d "$KIT" ]; then
-        echo "[C2] starter-kit 目录不存在: $KIT"
-        return 1
+    C2_REPO="$SCRIPT_DIR/C2-runtime"
+    KIT="/tmp/c2_starter_kit"
+
+    # 获取官方 starter-kit (首次: git clone; 后续: git pull)
+    if [ ! -d "$KIT/.git" ]; then
+        echo "[C2] 下载官方 starter-kit ..."
+        git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/ephonic/Agentic4SystemSummerSchoolContest.git "$KIT" 2>&1 | tail -2
+        cd "$KIT" && git sparse-checkout set Track-C/C2-runtime/starter-kit && git checkout 2>&1 | tail -1
+        mv Track-C/C2-runtime/starter-kit/* .; mv Track-C/C2-runtime/starter-kit/.gitignore . 2>/dev/null
+        rm -rf Track-C
     fi
 
     cd "$KIT" || return 1
 
     # 2.1 覆盖我们的实现
     echo "[C2] 覆盖实现文件..."
-    cp "$SCRIPT_DIR/C2-runtime/src/aec_runtime.cpp" src/aec_runtime.cpp 2>/dev/null && echo "  src/aec_runtime.cpp OK"
+    cp "$C2_REPO/src/aec_runtime.cpp" src/aec_runtime.cpp && echo "  src/aec_runtime.cpp OK"
     mkdir -p agents
-    cp "$SCRIPT_DIR/C2-runtime/agents/dma_agent.py" agents/dma_agent.py 2>/dev/null && echo "  agents/dma_agent.py OK"
-    cp "$SCRIPT_DIR/C2-runtime/agents/kernel_agent.py" agents/kernel_agent.py 2>/dev/null && echo "  agents/kernel_agent.py OK"
+    cp "$C2_REPO/agents/dma_agent.py" agents/dma_agent.py && echo "  agents/dma_agent.py OK"
+    cp "$C2_REPO/agents/kernel_agent.py" agents/kernel_agent.py && echo "  agents/kernel_agent.py OK"
 
     # 2.2 构建
     echo ""
@@ -115,7 +122,7 @@ test_c2() {
     echo "--- C2.3: 公开评分 (public) ---"
     LD_LIBRARY_PATH=$PWD/lib python3 grader/public_grade.py --submission . --profile public 2>&1
 
-    # 2.4 完整评分 (含 hidden performance)
+    # 2.4 完整评分
     echo ""
     echo "--- C2.4: 完整评分 (full, 含 hidden) ---"
     LD_LIBRARY_PATH=$PWD/lib python3 grader/public_grade.py --submission . --profile full 2>&1
@@ -166,13 +173,12 @@ test_c3() {
     # 3.5 Worker 协议自测
     echo ""
     echo "--- C3.5.1: Worker 协议自测 ---"
-    SELFCHEK="../testcases/release_to_competitors/selfcheck_worker.py"
+    SELFCHEK="$C3_SOL/selfcheck_worker.py"
     if [ -f "$SELFCHEK" ]; then
-        python3 "$SELFCHEK" --worker "python3 $C3_SOL/infer_worker.py" --models mlp_v1 resnet_v1 transformer_v1 2>&1
+        echo "  运行 selfcheck_worker.py ..."
+        python3 "$SELFCHEK" 2>&1
     else
-        echo "  selfcheck_worker.py 不存在: $SELFCHEK"
-        echo "  手动测试:"
-        echo "  echo 'READY test' | python3 infer_worker.py"
+        echo "  selfcheck_worker.py 不存在"
     fi
 
     # 3.5 端到端精度验证

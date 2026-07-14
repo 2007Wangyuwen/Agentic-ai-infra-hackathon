@@ -57,7 +57,7 @@ check("graph_outputs", len(dag["graph_outputs"]) == 1)
 check("num_nodes", dag["num_nodes"] == 4)
 check("num_edges", dag["num_edges"] == 3)
 check("nodes have op_type", all("op_type" in n for n in dag["nodes"]))
-check("edge keys", all(set(e.keys()) >= {"src","dst","tensor"} for e in dag["edges"]))
+check("edge keys", all(set(e.keys()) >= {"src_node","dst_node","tensor"} for e in dag["edges"]))
 
 # ── C3.2 Decomposition ──
 print("\n" + "="*50)
@@ -120,7 +120,7 @@ print("="*50)
 fgir = GraphIR(inputs=["a","b","c"], outputs=["y"], nodes=[
     GraphNode("m","MatMul",["a","b"],["m_out"]),
     GraphNode("add","Add",["m_out","c"],["y"]),
-])
+], initializers={"c"})
 pipeline = GraphPassPipeline(enable_fusion=True)
 opt, stats = pipeline.run(fgir)
 log = stats["Fusion"]["stats"]["fusion_log"]

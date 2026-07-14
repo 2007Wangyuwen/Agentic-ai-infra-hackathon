@@ -2,33 +2,18 @@
 """Test C3.2/C3.3/C3.4 modules with real ONNX models."""
 
 import json
+from pathlib import Path
+
 import onnx
-from scheduler import GraphIR, GraphNode, strategy
-from scheduler.graph_passes import GraphPassPipeline
-from scheduler.memory import analyze_lifetimes, build_execution_plan
+from c3scheduler.graph import import_onnx_graph, GraphIR, GraphNode
+from c3scheduler.strategy import strategy
+from c3scheduler.graph_passes import GraphPassPipeline
+from c3scheduler.memory import analyze_lifetimes, build_execution_plan
 
 
-def onnx_to_graph_ir(model_path: str) -> GraphIR:
-    model = onnx.load(model_path)
-    graph = model.graph
-    initializer_names = set(init.name for init in graph.initializer)
-    inputs = [x.name for x in graph.input if x.name not in initializer_names]
-    outputs = [x.name for x in graph.output]
-    nodes = []
-    for idx, node in enumerate(graph.node):
-        name = node.name if node.name else f"{node.op_type}_{idx}"
-        attrs = {}
-        for attr in node.attribute:
-            if attr.type == onnx.AttributeProto.INTS:
-                attrs[attr.name] = list(attr.ints)
-            elif attr.type == onnx.AttributeProto.INT:
-                attrs[attr.name] = int(attr.i)
-        nodes.append(GraphNode(
-            name=name, op_type=node.op_type,
-            inputs=list(node.input), outputs=list(node.output),
-            attributes=attrs,
-        ))
-    return GraphIR(inputs=inputs, outputs=outputs, nodes=nodes)
+SOLUTION_DIR = Path(__file__).resolve().parent
+TC_DIR = SOLUTION_DIR.parent / "testcases" / "release_to_competitors"
+MODELS_DIR = TC_DIR / "models"
 
 
 def test_model(model_path: str, label: str):
@@ -36,7 +21,7 @@ def test_model(model_path: str, label: str):
     print(f"Testing: {label} ({model_path})")
     print(f"{'='*60}")
 
-    graph = onnx_to_graph_ir(model_path)
+    graph = import_onnx_graph(model_path)
     print(f"[Graph] {len(graph.nodes)} nodes")
 
     # C3.2: Decomposition
@@ -77,10 +62,9 @@ def test_model(model_path: str, label: str):
 
 
 if __name__ == "__main__":
-    base = "../testcases/release_to_competitors/models"
-    test_model(f"{base}/mlp_v1.onnx", "MLP")
-    test_model(f"{base}/resnet_v1.onnx", "ResNet-18")
-    test_model(f"{base}/transformer_v1.onnx", "Transformer")
+    test_model(str(MODELS_DIR / "mlp_v1.onnx"), "MLP")
+    test_model(str(MODELS_DIR / "resnet_v1.onnx"), "ResNet-18")
+    test_model(str(MODELS_DIR / "transformer_v1.onnx"), "Transformer")
     print(f"\n{'='*60}")
     print("ALL MODELS PASSED C3.2 + C3.3 + C3.4")
     print(f"{'='*60}")

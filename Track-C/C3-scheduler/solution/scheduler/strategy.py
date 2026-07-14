@@ -65,7 +65,7 @@ class DecompositionStrategy:
             return PrecisionProfile("fp8")
         if node.op_type in {"GlobalAveragePool"}:
             return PrecisionProfile("fp4")
-        if node.op_type in {"Flatten", "Reshape", "Transpose", "Split", "Gather", "Constant"}:
+        if node.op_type in {"Flatten", "Reshape", "Transpose", "Split", "Gather", "Identity", "Constant"}:
             return PrecisionProfile("fp32")
         return PrecisionProfile("fp32")
 
@@ -107,7 +107,7 @@ class DecompositionStrategy:
             ]
         if node.op_type in {"Relu", "Add", "Mul", "Div", "Erf"}:
             return [KernelSpecRef(f"elementwise_{node.op_type.lower()}_{p}", node.inputs, node.outputs)]
-        if node.op_type in {"Flatten", "Reshape", "Transpose", "Split", "Gather", "GlobalAveragePool", "Constant"}:
+        if node.op_type in {"Flatten", "Reshape", "Transpose", "Split", "Gather", "GlobalAveragePool", "Identity", "Constant"}:
             return [KernelSpecRef(f"{node.op_type.lower()}_{p}", node.inputs, node.outputs)]
         return [KernelSpecRef(f"generic_{node.op_type.lower()}_{p}", node.inputs, node.outputs)]
 
