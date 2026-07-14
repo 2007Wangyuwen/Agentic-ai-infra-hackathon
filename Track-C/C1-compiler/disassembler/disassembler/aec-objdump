@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""AEC Disassembler"""
+import sys,os
+sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),"../compiler"))
+from aec_backend import disassemble
+if len(sys.argv)<2:sys.stderr.write("Usage: aec-objdump output.aecbin\n");sys.exit(1)
+print(disassemble(sys.argv[1]))
